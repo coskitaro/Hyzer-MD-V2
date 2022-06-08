@@ -1,21 +1,30 @@
 console.log('Starting...')
-let cluster = require('cluster')
-let path = require('path')
-let fs = require('fs')
-let package = require('./package.json')
-const CFonts = require('cfonts')
-const Readline = require('readline')
-const yargs = require('yargs/yargs')
-const rl = Readline.createInterface(process.stdin, process.stdout)
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
 
-CFonts.say('BOT BY\n HYZER', {
-  colors: ['blueBright','yellowBright'],                                        font: 'block',
+import { join, dirname } from 'path'
+import { createRequire } from "module";
+import { fileURLToPath } from 'url'
+import { setupMaster, fork } from 'cluster'
+import { watchFile, unwatchFile } from 'fs'
+import cfonts from 'cfonts';
+import { createInterface } from 'readline'
+import yargs from 'yargs'
+
+// https://stackoverflow.com/a/50052194
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const require = createRequire(__dirname) // Bring in the ability to create the 'require' method
+const { name, author } = require(join(__dirname, './package.json')) // https://www.stefanjudis.com/snippets/how-to-import-json-files-in-es-modules-node-js/
+const { say } = cfonts
+const rl = createInterface(process.stdin, process.stdout)
+
+say('Pawaa-chan', {
+  font: 'block',
   align: 'center',
+  colors: ['#a8c3bc'] 
 })
-CFonts.say(`BY HYZER OFFICIAL`, {                                            
-colors: ['yellow'],                                                           
-font: 'console',                                                              align: 'center',
+say(`'${name}' By @${author.name || author}`, {
+  font: 'console',
+  align: 'center',
+  colors: ['#a8c3bc']
 })
 
 var isRunning = false
@@ -26,22 +35,22 @@ var isRunning = false
 function start(file) {
   if (isRunning) return
   isRunning = true
-  let args = [path.join(__dirname, file), ...process.argv.slice(2)]
-  CFonts.say([process.argv[0], ...args].join(' '), {
+  let args = [join(__dirname, file), ...process.argv.slice(2)]
+  say([process.argv[0], ...args].join(' '), {
     font: 'console',
     align: 'center',
-    gradient: ['red', 'magenta']
+    colors: ['#a8c3bc']
   })
-  cluster.setupMaster({
-    exec: path.join(__dirname, file),
+  setupMaster({
+    exec: args[0],
     args: args.slice(1),
   })
-  let p = cluster.fork()
+  let p = fork()
   p.on('message', data => {
     console.log('[RECEIVED]', data)
     switch (data) {
       case 'reset':
-        p.kill()
+        p.process.kill()
         isRunning = false
         start.apply(this, arguments)
         break
@@ -50,12 +59,12 @@ function start(file) {
         break
     }
   })
-  p.on('exit', code => {
+  p.on('exit', (_, code) => {
     isRunning = false
     console.error('Exited with code:', code)
     if (code === 0) return
-    fs.watchFile(args[0], () => {
-      fs.unwatchFile(args[0])
+    watchFile(args[0], () => {
+      unwatchFile(args[0])
       start(file)
     })
   })
